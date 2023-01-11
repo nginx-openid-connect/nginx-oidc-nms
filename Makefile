@@ -10,6 +10,8 @@ start-keycloak:
 start:
 	docker-compose up -d nms_oidc_keycloak
 	docker-compose up -d nms_oidc_azuread
+	docker exec nms-oidc-keycloak bash -c ". /etc/nms/nginx/oidc/config-map.sh bash"
+	docker exec nms-oidc-azuread  bash -c ". /etc/nms/nginx/oidc/config-map.sh bash"
 
 ps:
 	docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Ports}}\t{{.Names}}"
@@ -22,15 +24,15 @@ down-keycloak:
 	docker-compose down keycloak
 
 down:
-	docker-compose down nms-oidc-keycloak
-	docker-compose down nms-oidc-azuread
+	docker-compose down -s nms_oidc_keycloak
+	docker-compose down -s nms_oidc_azuread
 
 kill:
 	docker kill nms-oidc-keycloak
 	docker kill nms-oidc-azuread
 
 stop:
-	docker-compose down
+	docker-compose stop
 
 clean-all: 
 	docker kill $$(docker ps -q) 2> /dev/null || true
@@ -38,6 +40,6 @@ clean-all:
 	docker volume rm $(docker volume ls -qf dangling=true)
 
 clean: 
-	docker kill nms-oidc-azuread 2> /dev/null || true
+	docker kill nms-oidc-azuread  2> /dev/null || true
 	docker kill nms-oidc-keycloak 2> /dev/null || true
 	docker system prune -a

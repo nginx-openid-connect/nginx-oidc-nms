@@ -53,9 +53,9 @@ services:
     ports:
       - 8010:8010
     volumes:
-      # - type: bind
-      #   source: ./
-      #   target: /etc/nginx/conf.d/
+      - type: bind
+        source: ./
+        target: /etc/nms/nginx/oidc/
       - type: bind
         source: ./docker/build-context/nginx/sample/
         target: /etc/nginx/sample/
@@ -78,9 +78,9 @@ services:
     ports:
       - 443:443
     volumes:
-      # - type: bind
-      #   source: ./
-      #   target: /etc/nginx/conf.d/
+      - type: bind
+        source: ./
+        target: /etc/nms/nginx/oidc/
       - type: bind
         source: ./docker/build-context/nginx/sample/
         target: /etc/nginx/sample/

@@ -218,19 +218,10 @@ COPY  docker/build-context/content/       /usr/share/nginx/html/
 COPY  docker/build-context/nginx/         /etc/nginx/
 COPY  docker/build-context/nms/           /etc/nms/
 COPY  docker/build-context/var/www/nms/   /var/www/nms/
-COPY  frontend.conf                       /etc/nginx/conf.d/
+COPY  frontend.conf                       /etc/nms/nginx/oidc/
 COPY  openid_*.conf                       /etc/nms/nginx/oidc/
 COPY  openid_connect.js                   /etc/nms/nginx/oidc/
 COPY  config-map.sh                       /etc/nms/nginx/oidc/
-
-# RUN sed -i "s#SERVER_FQDN#$SERVER_FQDN#"                       /etc/nms/nginx/oidc/openid_configuration.conf
-# RUN sed -i "s#OIDC_AUTH_ENDPOINT#$OIDC_AUTH_ENDPOINT#"         /etc/nms/nginx/oidc/openid_configuration.conf
-# RUN sed -i "s#OIDC_TOKEN_ENDPOINT#$OIDC_TOKEN_ENDPOINT#"       /etc/nms/nginx/oidc/openid_configuration.conf
-# RUN sed -i "s#OIDC_KEYS_ENDPOINT#$OIDC_KEYS_ENDPOINT#"         /etc/nms/nginx/oidc/openid_configuration.conf
-# RUN sed -i "s#OIDC_USERINFO_ENDPOINT#$OIDC_USERINFO_ENDPOINT#" /etc/nms/nginx/oidc/openid_configuration.conf
-# RUN sed -i "s#OIDC_CLIENT_ID#$OIDC_CLIENT_ID#"                 /etc/nms/nginx/oidc/openid_configuration.conf
-# RUN sed -i "s#OIDC_CLIENT_SECRET#$OIDC_CLIENT_SECRET#"         /etc/nms/nginx/oidc/openid_configuration.conf
-# RUN sed -i "s#OIDC_HMAC_KEY#$OIDC_HMAC_KEY#"                   /etc/nms/nginx/oidc/openid_configuration.conf
 
 # EXPOSE ports, HTTP 80, HTTPS 443 and, Nginx status page 8010
 STOPSIGNAL SIGTERM

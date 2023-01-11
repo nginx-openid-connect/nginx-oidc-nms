@@ -1,4 +1,4 @@
-# nginx-oidc-nms
+# nms-oidc
 Reference Implementation of NGINX Management Suite(NMS) for OpenID Connect(OIDC) Authentication.
 
 This repo is to manage the core NJS and sample configuration regarding the reference implementation of NMS OIDC. In addition to that you can find how to set up IdP, NGINX Plus and locally test OIDC flow in your machine before installing and configuring NMS products.

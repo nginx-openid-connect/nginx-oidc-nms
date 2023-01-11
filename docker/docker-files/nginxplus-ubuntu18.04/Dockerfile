@@ -187,28 +187,50 @@ RUN    mkdir -p /etc/nginx/conf.d                           \
     && mkdir -p /etc/nginx/sample                           \
     && mkdir -p /usr/share/nginx/html/css                   \
     && mkdir -p /var/lib/nginx/state                        \
-    && mkdir -p /etc/controller-agent/configurator/auxfiles
+    && mkdir -p /etc/controller-agent/configurator/auxfiles \
+    && mkdir -p /var/run/nms                                \
+    && mkdir -p /etc/nms/nginx/                             \
+    && mkdir -p /etc/nms/nginx/locations/                   \
+    && mkdir -p /etc/nms/nginx/oidc/                        \
+    && mkdir -p /var/www/nms/json/
 
 VOLUME /usr/share/nginx/html
 VOLUME /etc/nginx
+VOLUME /etc/nms/nginx
 
 RUN    chmod -R 644 /etc/nginx
 
 RUN    chown nginx:nginx  /etc/nginx/conf.d
 RUN    chmod -R 644       /etc/nginx/conf.d
 
+RUN    chown nginx:nginx  /etc/nms/nginx/oidc/
+RUN    chmod -R 644       /etc/nms/nginx/oidc/
+
 RUN    chown nginx:nginx  /etc/nginx/sample
 RUN    chmod -R 644       /etc/nginx/sample
 
 RUN    chmod -R 644       /usr/share/nginx/html/css
-RUN    chown nginx:nginx  /var/lib/nginx/state/
-RUN    chmod -R 666       /var/lib/nginx/state/
+RUN    chown nginx:nginx  /var/run/nms/
+RUN    chmod -R 644       /var/run/nms/
 
 # COPY (Nginx configuration) directory
-COPY  docker/build-context/content/   /usr/share/nginx/html/
-COPY  docker/build-context/nginx/     /etc/nginx/
-COPY  oidc*.conf                      /etc/nginx/conf.d/
-COPY  openid*.*                       /etc/nginx/conf.d/
+COPY  docker/build-context/content/       /usr/share/nginx/html/
+COPY  docker/build-context/nginx/         /etc/nginx/
+COPY  docker/build-context/nms/           /etc/nms/
+COPY  docker/build-context/var/www/nms/   /var/www/nms/
+COPY  frontend.conf                       /etc/nginx/conf.d/
+COPY  openid_*.conf                       /etc/nms/nginx/oidc/
+COPY  openid_connect.js                   /etc/nms/nginx/oidc/
+COPY  config-map.sh                       /etc/nms/nginx/oidc/
+
+# RUN sed -i "s#SERVER_FQDN#$SERVER_FQDN#"                       /etc/nms/nginx/oidc/openid_configuration.conf
+# RUN sed -i "s#OIDC_AUTH_ENDPOINT#$OIDC_AUTH_ENDPOINT#"         /etc/nms/nginx/oidc/openid_configuration.conf
+# RUN sed -i "s#OIDC_TOKEN_ENDPOINT#$OIDC_TOKEN_ENDPOINT#"       /etc/nms/nginx/oidc/openid_configuration.conf
+# RUN sed -i "s#OIDC_KEYS_ENDPOINT#$OIDC_KEYS_ENDPOINT#"         /etc/nms/nginx/oidc/openid_configuration.conf
+# RUN sed -i "s#OIDC_USERINFO_ENDPOINT#$OIDC_USERINFO_ENDPOINT#" /etc/nms/nginx/oidc/openid_configuration.conf
+# RUN sed -i "s#OIDC_CLIENT_ID#$OIDC_CLIENT_ID#"                 /etc/nms/nginx/oidc/openid_configuration.conf
+# RUN sed -i "s#OIDC_CLIENT_SECRET#$OIDC_CLIENT_SECRET#"         /etc/nms/nginx/oidc/openid_configuration.conf
+# RUN sed -i "s#OIDC_HMAC_KEY#$OIDC_HMAC_KEY#"                   /etc/nms/nginx/oidc/openid_configuration.conf
 
 # EXPOSE ports, HTTP 80, HTTPS 443 and, Nginx status page 8010
 STOPSIGNAL SIGTERM

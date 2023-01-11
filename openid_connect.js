@@ -5,21 +5,7 @@
  */
 var newSession = false; // Used by oidcAuth() and validateIdToken()
 
-const EXTRA_PARAMS = 1;
-const REPLACE_PARAMS = 2;
-const WRN_SESSION_COOKIE = 'OIDC session cookie is invalid';
-const INF_SESSION_COOKIE = 'OIDC session cookie is valid';
-
-export default {
-    auth,
-    codeExchange,
-    validateIdToken,
-    logout,
-    redirectPostLogin,
-    redirectPostLogout,
-    userInfo,
-    validateSessionCookie
-};
+export default {auth, codeExchange, validateIdToken, logout};
 
 function retryOriginalRequest(r) {
     delete r.headersOut["WWW-Authenticate"]; // Remove evidence of original failed auth_jwt
@@ -40,12 +26,12 @@ function waitForSessionSync(r, timeLeft) {
 
 function auth(r, afterSyncCheck) {
     // If a cookie was sent but the ID token is not in the key-value database, wait for the token to be in sync.
-    if (r.variables.cookie_session_id && !r.variables.session_jwt && !afterSyncCheck && r.variables.zone_sync_leeway > 0) {
+    if (r.variables.cookie_auth_token && !r.variables.session_jwt && !afterSyncCheck && r.variables.zone_sync_leeway > 0) {
         waitForSessionSync(r, r.variables.zone_sync_leeway);
         return;
     }
 
-    if (!r.variables.refresh_token || r.variables.refresh_token == "-" || !isValidSessionCookie(r)) {
+    if (!r.variables.refresh_token || r.variables.refresh_token == "-") {
         newSession = true;
 
         // Check we have all necessary configuration variables (referenced only by njs)
@@ -62,7 +48,7 @@ function auth(r, afterSyncCheck) {
             return;
         }
         // Redirect the client to the IdP login page with the cookies we need for state
-        r.return(302, r.variables.oidc_authz_endpoint + getQueryParamsAuthZ(r));
+        r.return(302, r.variables.oidc_authz_endpoint + getAuthZArgs(r));
         return;
     }
     
@@ -116,13 +102,12 @@ function auth(r, afterSyncCheck) {
                         }
 
                         // ID Token is valid, update keyval
-                        r.variables.session_id = r.variables.cookie_session_id;
-                        r.log("OIDC refresh success, updating id_token for " + r.variables.cookie_session_id);
+                        r.log("OIDC refresh success, updating id_token for " + r.variables.cookie_auth_token);
                         r.variables.session_jwt = tokenset.id_token; // Update key-value store
                         if (tokenset.access_token) {
                             r.variables.access_token = tokenset.access_token;
                         } else {
-                            r.variables.access_token = "-";
+                            r.variables.access_token = "";
                         }
 
                         // Update refresh token (if we got a new one)
@@ -205,16 +190,14 @@ function codeExchange(r) {
                         }
 
                         // Add opaque token to keyval session store
-                        r.log("OIDC success, creating session " + r.variables.session_id);
-                        r.variables.session_id = generateSessionID(r)
+                        r.log("OIDC success, creating session " + r.variables.request_id);
                         r.variables.new_session = tokenset.id_token; // Create key-value store entry
                         if (tokenset.access_token) {
                             r.variables.new_access_token = tokenset.access_token;
                         } else {
-                            r.variables.new_access_token = "-";
+                            r.variables.new_access_token = "";
                         }
-                        
-                        r.headersOut["Set-Cookie"] = "session_id=" + r.variables.session_id + "; " + r.variables.oidc_cookie_flags;
+                        r.headersOut["Set-Cookie"] = "auth_token=" + r.variables.request_id + "; " + r.variables.oidc_cookie_flags;
                         r.return(302, r.variables.redirect_base + r.variables.cookie_auth_redir);
                    }
                 );
@@ -280,42 +263,26 @@ function validateIdToken(r) {
     }
 }
 
-//
-// Default RP-Initiated or Custom Logout w/ OP.
-// 
-// - An RP requests that the OP log out the end-user by redirecting the
-//   end-user's User Agent to the OP's Logout endpoint.
-// - https://openid.net/specs/openid-connect-rpinitiated-1_0.html#RPLogout
-// - https://openid.net/specs/openid-connect-rpinitiated-1_0.html#RedirectionAfterLogout
-//
 function logout(r) {
-    r.log("OIDC logout for " + r.variables.cookie_session_id);
-    var idToken = r.variables.session_jwt;
-    var queryParams = '?post_logout_redirect_uri=' + 
-                      r.variables.redirect_base + 
-                      r.variables.oidc_logout_redirect +
-                      '&id_token_hint=' + idToken;
-    if (r.variables.oidc_logout_query_params_option == REPLACE_PARAMS) {
-        queryParams = '?' + r.variables.oidc_logout_query_params;
-    } else if (r.variables.oidc_logout_query_params_option == EXTRA_PARAMS) {
-        queryParams += '&' + r.variables.oidc_logout_query_params;
-    } 
-    r.variables.session_id    = '-';
-    r.variables.session_jwt   = '-';
-    r.variables.access_token  = '-';
-    r.variables.refresh_token = '-';
-    r.return(302, r.variables.oidc_logout_endpoint + queryParams);
+    r.log("OIDC logout for " + r.variables.cookie_auth_token);
+    r.variables.session_jwt   = "-";
+    r.variables.access_token  = "-";
+    r.variables.refresh_token = "-";
+    r.return(302, r.variables.oidc_logout_redirect);
 }
 
-function getQueryParamsAuthZ(r) {
+function getAuthZArgs(r) {
     // Choose a nonce for this flow for the client, and hash it for the IdP
-    var noncePlain = r.variables.session_id;
+    var noncePlain = r.variables.request_id;
     var c = require('crypto');
     var h = c.createHmac('sha256', r.variables.oidc_hmac_key).update(noncePlain);
     var nonceHash = h.digest('base64url');
-    var queryParams = "?response_type=code&scope=" + r.variables.oidc_scopes + "&client_id=" + r.variables.oidc_client + "&redirect_uri="+ r.variables.redirect_base + r.variables.redir_location + "&nonce=" + nonceHash;
+    var authZArgs = "?response_type=code&scope=" + r.variables.oidc_scopes + "&client_id=" + r.variables.oidc_client + "&redirect_uri="+ r.variables.redirect_base + r.variables.redir_location + "&nonce=" + nonceHash;
 
-    r.variables.nonce_hash = nonceHash;
+    if (r.variables.oidc_authz_extra_args) {
+        authZArgs += "&" + r.variables.oidc_authz_extra_args;
+    }
+
     r.headersOut['Set-Cookie'] = [
         "auth_redir=" + r.variables.request_uri + "; " + r.variables.oidc_cookie_flags,
         "auth_nonce=" + noncePlain + "; " + r.variables.oidc_cookie_flags
@@ -326,18 +293,12 @@ function getQueryParamsAuthZ(r) {
         r.variables.pkce_id = c.createHash('sha256').update(String(Math.random())).digest('base64url');
         var pkce_code_challenge = c.createHash('sha256').update(pkce_code_verifier).digest('base64url');
         r.variables.pkce_code_verifier = pkce_code_verifier;
-        r.variables.pkce_code_challenge = pkce_code_challenge;
 
-        queryParams += "&code_challenge_method=S256&code_challenge=" + pkce_code_challenge + "&state=" + r.variables.pkce_id;
+        authZArgs += "&code_challenge_method=S256&code_challenge=" + pkce_code_challenge + "&state=" + r.variables.pkce_id;
     } else {
-        queryParams += "&state=0";
+        authZArgs += "&state=0";
     }
-    if (r.variables.oidc_authz_query_params_option == REPLACE_PARAMS) {
-        queryParams = '?' + r.variables.oidc_authz_query_params;
-    } else if (r.variables.oidc_authz_query_params_option == EXTRA_PARAMS) {
-        queryParams += '&' + r.variables.oidc_authz_query_params;
-    }
-    return queryParams;
+    return authZArgs;
 }
 
 function idpClientAuth(r) {
@@ -348,110 +309,4 @@ function idpClientAuth(r) {
     } else {
         return "code=" + r.variables.arg_code + "&client_secret=" + r.variables.oidc_client_secret;
     }   
-}
-
-//
-// Redirect URI after successful login from the OP.
-//
-function redirectPostLogin(r) {
-    if (r.variables.oidc_landing_page) {
-        r.return(302, r.variables.oidc_landing_page);
-    } else {
-        r.return(302, r.variables.redirect_base + r.variables.cookie_auth_redir);
-    }
-}
-
-//
-// Redirect URI after logged-out from the OP.
-//
-function redirectPostLogout(r) {
-    if (r.variables.post_logout_return_uri) {
-        r.return(302, r.variables.post_logout_return_uri);
-    } else {
-        r.return(302, r.variables.redirect_base + r.variables.cookie_auth_redir);
-    }
-}
-
-//
-// Return necessary user info claims after receiving and extracting all claims
-// that are received from the OpenID Connect Provider(OP).
-//
-function userInfo(r) {
-    r.subrequest('/_userinfo',
-        function(res) {
-            if (res.status == 200) {
-                var error_log = "OIDC userinfo JSON failure";
-                var claimsOP = ''; // Claims that are received by the OP.
-                try {
-                    claimsOP = JSON.parse(res.responseBody);
-                } catch (e) {
-                    error_log += ": " + res.responseBody;
-                    r.error(error_log);
-                    r.return(500);
-                    return;
-                }
-                // The claimsRP is to extract claims that are configured in
-                // $oidc_userinfo_required_claims in the RP and send them to
-                // the client using the response of the OP.
-                var claimsRP = r.variables.oidc_userinfo_required_claims.split(",");
-                var ret = {};
-                for (var i in claimsRP) {
-                    if (claimsRP[i] in claimsOP) {
-                        ret[claimsRP[i]] = claimsOP[claimsRP[i]];
-                    }
-                }
-                r.variables.user_info = JSON.stringify(ret);
-                r.return(200, r.variables.user_info);
-            } else {
-                r.return(res.status)
-            }
-        }
-    );
-}
-
-// Generate session ID using remote address, user agent, client ID, and time.
-function generateSessionID(r) {
-    var time = new Date(Date.now());
-    var jsonSession = {
-        'remoteAddr': r.variables.remote_addr,
-        'userAgent' : r.variables.http_user_agent,
-        'clientID'  : r.variables.oidc_client,
-        'date'      : time.getDate()
-    };
-    if (r.variables.session_cookie_validation_time_format == "hh") {
-        jsonSession['timestamp'] = time.getHours() + ":00";
-    } else if (r.variables.session_cookie_validation_time_format == "mm") {
-        jsonSession['timestamp'] = time.getHours() + ":" + time.getMinutes();
-    }
-    var data = JSON.stringify(jsonSession);
-    var c = require('crypto');
-    var h = c.createHmac('sha256', r.variables.oidc_hmac_key).update(data);
-    var session_id = h.digest('base64url');
-    return session_id;
-}
-
-// Check if session cookie is valid, and generate new session id otherwise.
-function isValidSessionCookie(r) {
-    if (r.variables.session_cookie_validation_enable == 0) {
-        return true;
-    }
-    r.log('Start checking if there is an existing valid session...')
-    var valid_session_id = generateSessionID(r);
-    if (r.variables.cookie_session_id != valid_session_id) {
-        return false;
-    }
-    return true;
-}
-
-// Check if the session cookie is valid to mitigate security issues where
-// anyone who holds the session cookie could access backend from any client
-// (browsers or command line).
-function validateSessionCookie(r) {
-    if (!isValidSessionCookie(r)) {
-        r.warn(WRN_SESSION_COOKIE)
-        r.return(403, '{"message": "' + WRN_SESSION_COOKIE + '"}\n')
-        return false;
-    }
-    r.return(200, '{"message": "' + INF_SESSION_COOKIE + '"}\n') 
-    return true;
 }

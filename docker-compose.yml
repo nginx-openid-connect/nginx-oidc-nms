@@ -44,18 +44,18 @@ services:
     networks:
       - mynetwork
 
-  nms_oidc_keycloak_ubuntu18.04:
-    container_name: nms-oidc
+  nms_oidc_keycloak:
+    container_name: nms-oidc-keycloak
     build:
       context: ./
       dockerfile: ./docker/docker-files/nginxplus-ubuntu18.04/Dockerfile
-    image: nms_oidc_keycloak_ubuntu18.04
+    image: nms_oidc_keycloak
     ports:
       - 8010:8010
     volumes:
-      - type: bind
-        source: ./
-        target: /etc/nginx/conf.d/
+      # - type: bind
+      #   source: ./
+      #   target: /etc/nginx/conf.d/
       - type: bind
         source: ./docker/build-context/nginx/sample/
         target: /etc/nginx/sample/
@@ -66,3 +66,30 @@ services:
       - keycloak
     networks:
       - mynetwork
+    env_file:
+      - var-keycloak.env
+
+  nms_oidc_azuread:
+    container_name: nms-oidc-azuread
+    build:
+      context: ./
+      dockerfile: ./docker/docker-files/nginxplus-ubuntu18.04/Dockerfile
+    image: nms_oidc_azuread
+    ports:
+      - 443:443
+    volumes:
+      # - type: bind
+      #   source: ./
+      #   target: /etc/nginx/conf.d/
+      - type: bind
+        source: ./docker/build-context/nginx/sample/
+        target: /etc/nginx/sample/
+      - type: bind
+        source: ./docker/build-context/content
+        target: /usr/share/nginx/html/
+    depends_on:
+      - nms_oidc_keycloak
+    networks:
+      - mynetwork
+    env_file:
+      - var-azuread.env

@@ -1,0 +1,16 @@
+location = /401.json {
+   internal;
+   root /var/www/nms/json/error;
+}
+location = /403.json {
+   internal;
+   root /var/www/nms/json/error;
+}
+location = /404.json {
+   internal;
+   root /var/www/nms/json/error;
+}
+location = /502.json {
+   internal;
+   root /var/www/nms/json/error;
+}

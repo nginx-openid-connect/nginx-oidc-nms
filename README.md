@@ -1,9 +1,9 @@
 # nginx-oidc-nms
 Reference Implementation of NGINX Management Suite(NMS) for OpenID Connect(OIDC) Authentication.
 
-This repo is to manage the core NJS amd sample configuration regarding the reference implementation of NMS OIDC. In addition to that you can find how to set up IdP, NGINX Plus and locally test OIDC flow in your machine before installing and configuring NMS products.
+This repo is to manage the core NJS and sample configuration regarding the reference implementation of NMS OIDC. In addition to that you can find how to set up IdP, NGINX Plus and locally test OIDC flow in your machine before installing and configuring NMS products.
 
-> Note: The main [`README.md`](https://github.com/nginxinc/nginx-openid-connect) of this repo explains several options in detail. But this doc focuses on `Quick Start Guide` to quickly set up and test the OIDC flow locally using bundled frontend app and backend environment on behalf of NMS.
+> Note: The main [`README.md`](https://github.com/nginxinc/nginx-openid-connect) of this repo explains several options in detail. But this doc focuses on `Start Guide` to quickly set up and test the OIDC flow locally using bundled frontend app and backend environment on behalf of NMS.
 
 ![](./img/nginx-oidc-workflow.png)
 
@@ -25,7 +25,6 @@ This repo is to manage the core NJS amd sample configuration regarding the refer
   $ sudo vi /etc/hosts or notepad.exe c:\Windows\System32\Drivers\etc\hosts
 
   127.0.0.1 www.example.com
-  127.0.0.1 host.docker.internal
   ```
 
   > Note: In this example, **Keycloak** is used as it can be installed as one of Docker containers in your local machine.

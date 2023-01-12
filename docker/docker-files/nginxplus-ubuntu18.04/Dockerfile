@@ -192,6 +192,7 @@ RUN    mkdir -p /etc/nginx/conf.d                           \
     && mkdir -p /etc/nms/nginx/                             \
     && mkdir -p /etc/nms/nginx/locations/                   \
     && mkdir -p /etc/nms/nginx/oidc/                        \
+    && mkdir -p /var/www/nms/ui/css/                        \
     && mkdir -p /var/www/nms/json/
 
 VOLUME /usr/share/nginx/html
@@ -209,19 +210,21 @@ RUN    chmod -R 644       /etc/nms/nginx/oidc/
 RUN    chown nginx:nginx  /etc/nginx/sample
 RUN    chmod -R 644       /etc/nginx/sample
 
-RUN    chmod -R 644       /usr/share/nginx/html/css
+RUN    chmod -R 655       /usr/share/nginx/html/css
+RUN    chmod -R 655       /var/www/nms/ui/
+RUN    chmod -R 655       /var/www/nms/ui/css
 RUN    chown nginx:nginx  /var/run/nms/
 RUN    chmod -R 644       /var/run/nms/
 
 # COPY (Nginx configuration) directory
-COPY  docker/build-context/content/       /usr/share/nginx/html/
-COPY  docker/build-context/nginx/         /etc/nginx/
-COPY  docker/build-context/nms/           /etc/nms/
-COPY  docker/build-context/var/www/nms/   /var/www/nms/
-COPY  frontend.conf                       /etc/nms/nginx/oidc/
-COPY  openid_*.conf                       /etc/nms/nginx/oidc/
-COPY  openid_connect.js                   /etc/nms/nginx/oidc/
-COPY  config-map.sh                       /etc/nms/nginx/oidc/
+COPY  docker/build-context/nginx/             /etc/nginx/
+COPY  docker/build-context/nms/               /etc/nms/
+COPY  docker/build-context/content/           /var/www/nms/ui/
+COPY  docker/build-context/var/www/nms/json   /var/www/nms/json/
+COPY  nms-http-*.conf                         /etc/nginx/conf.d/
+COPY  openid_*.conf                           /etc/nms/nginx/oidc/
+COPY  openid_connect.js                       /etc/nms/nginx/oidc/
+COPY  config-map.sh                           /etc/nms/nginx/oidc/
 
 # EXPOSE ports, HTTP 80, HTTPS 443 and, Nginx status page 8010
 STOPSIGNAL SIGTERM

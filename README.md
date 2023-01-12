@@ -143,7 +143,7 @@ Choose one of your prefered IdPs, and set up your IdP by referencing the followi
 
   > Note:
   >
-  > - In the [`frontend.conf`](../frontend.conf), you can add additional API endpoints like:
+  > - In the [`nms-http-simple.conf`](../nms-http-simple.conf), you can add additional API endpoints like:
   >
   >   ```nginx
   >   location /v1/private-api {

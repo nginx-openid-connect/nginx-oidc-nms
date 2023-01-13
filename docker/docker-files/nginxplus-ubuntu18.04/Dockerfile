@@ -196,25 +196,18 @@ RUN    mkdir -p /etc/nginx/conf.d                           \
     && mkdir -p /var/www/nms/json/
 
 VOLUME /usr/share/nginx/html
+VOLUME /var/www/nms/ui/
 VOLUME /etc/nginx
 VOLUME /etc/nms/nginx
 
 RUN    chmod -R 644 /etc/nginx
-
-RUN    chown nginx:nginx  /etc/nginx/conf.d
-RUN    chmod -R 644       /etc/nginx/conf.d
-
-RUN    chown nginx:nginx  /etc/nms/nginx/oidc/
-RUN    chmod -R 644       /etc/nms/nginx/oidc/
-
-RUN    chown nginx:nginx  /etc/nginx/sample
-RUN    chmod -R 644       /etc/nginx/sample
-
-RUN    chmod -R 655       /usr/share/nginx/html/css
-RUN    chmod -R 655       /var/www/nms/ui/
-RUN    chmod -R 655       /var/www/nms/ui/css
-RUN    chown nginx:nginx  /var/run/nms/
-RUN    chmod -R 644       /var/run/nms/
+RUN    chmod -R 644 /etc/nginx/conf.d
+RUN    chmod -R 644 /etc/nms/nginx/oidc/
+RUN    chmod -R 644 /etc/nginx/sample
+RUN    chmod -R 666 /usr/share/nginx/html/css
+RUN    chmod -R 777 /var/www/nms/ui/
+RUN    chmod -R 777 /var/www/nms/ui/css
+RUN    chmod -R 777 /var/run/nms/
 
 # COPY (Nginx configuration) directory
 COPY  docker/build-context/nginx/             /etc/nginx/

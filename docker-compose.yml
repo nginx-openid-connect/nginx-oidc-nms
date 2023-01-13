@@ -61,7 +61,7 @@ services:
         target: /etc/nginx/sample/
       - type: bind
         source: ./docker/build-context/content
-        target: /usr/share/nginx/html/
+        target: /var/www/nms/ui/
     depends_on:
       - keycloak
     networks:
@@ -86,7 +86,7 @@ services:
         target: /etc/nginx/sample/
       - type: bind
         source: ./docker/build-context/content
-        target: /usr/share/nginx/html/
+        target: /var/www/nms/ui/
     depends_on:
       - nms_oidc_keycloak
     networks:

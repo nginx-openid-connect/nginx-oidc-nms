@@ -43,3 +43,4 @@ clean:
 	docker kill nms-oidc-azuread  2> /dev/null || true
 	docker kill nms-oidc-keycloak 2> /dev/null || true
 	docker system prune -a
+	docker volume rm $(docker volume ls -qf dangling=true)

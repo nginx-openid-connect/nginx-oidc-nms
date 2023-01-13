@@ -9,7 +9,7 @@ This repo is to manage the core NJS and sample configuration regarding the refer
 
 - [1. Prerequisites](#1-prerequisites)
 - [2. Running a Keycloak Docker Container (Optional)](#2-running-a-keycloak-docker-container-optional)
-- [3. Configuring Environment Variables](#3-configuring-environment-variables)
+- [3. Configuring Environment Variables and NGINX](#3-configuring-environment-variables-and-nginx)
 - [4. Running a NMS-OIDC Simulaiton Docker Container](#4-running-a-nms-oidc-simulaiton-docker-container)
 - [5. Running a Browser and Checking If Bundle Page Works](#5-running-a-browser-and-checking-if-bundle-page-works)
 - [6. Setting up an Identity Provider (IdP)](#6-setting-up-an-identity-provider-idp)
@@ -29,7 +29,7 @@ This repo is to manage the core NJS and sample configuration regarding the refer
   127.0.0.1 host.docker.internal
   ```
 
-  > Note: In this example, **Keycloak** is used as it can be installed as one of Docker containers in your local machine.
+  > Note: The `host.docker.internal` is used for **Keycloak**. The `www.example.com` is used for any IdP.
 
 - [Download NGINX Plus license files](https://www.nginx.com/free-trial-request/), and copy them to ./docker/build-context/ssl/
 
@@ -38,16 +38,10 @@ This repo is to manage the core NJS and sample configuration regarding the refer
   nginx-repo.key
   ```
 
-- Clone the [nginx-openid-connect/nginx-oidc-examples](https://github.com/nginx-openid-connect/nginx-oidc-examples.git) GitHub repository, or download the repo files.
+- Clone the [nginx-openid-connect/nms-oidc](https://github.com/nginx-openid-connect/nms-oidc) GitHub repository, or download the repo files.
 
   ```bash
-  git clone https://github.com/nginx-openid-connect/nginx-oidc-examples.git
-  ```
-
-- Change the working directory.
-
-  ```bash
-  cd nginx-oidc-examples/001-oidc-local-test
+  git clone https://github.com/nginx-openid-connect/nms-oidc.git
   ```
 
 ## 2. Running a Keycloak Docker Container (Optional)
@@ -65,7 +59,7 @@ This repo is to manage the core NJS and sample configuration regarding the refer
 
   <br>
 
-## 3. Configuring Environment Variables
+## 3. Configuring Environment Variables and NGINX
 
 - Edit and run either `~/.bash_profile` or batch file in Windows:
   ```bash
@@ -77,6 +71,28 @@ This repo is to manage the core NJS and sample configuration regarding the refer
 
 - Edit environment variables in `var-azuread.env` and `var-keycloak.env` for Docker
 
+
+- Edit NGINX configuration variables in `openid_configuration.conf`(./openid_configuration.conf):
+  ```nginx
+  map $host $oidc_client_credentials_flow_enable {
+      # Both of Client Credentials Flow and AuthCode Flow are supported if enable.
+      # Client Credentials Flow is executed if bearer token is in the API request
+      # and this flag is enabled. Otherwise AuthCode Flow is executed.
+      default 1;
+  }
+
+  map $host $oidc_client_credentials_token_body {
+      SERVER_FQDN OIDC_CLIENT_CREDENTIALS_TOKEN_BODY;
+
+      # Custom extra body in the token endpoint for Client Credentials Flow
+      default "scope=$oidc_client/.default";
+      #www.example.com "audience=https://dev-abcdefg.us.auth0.com/api/v2/";
+  }
+  ```
+
+  > **Note:**
+  > - Check the specification per each IdP if you want to support and test the Client Credentials Flow.
+  > - Add additional parameters (e.g., `scope=xxx` for Azure AD and Keycloak or `audience=xxx` for Auth0 if needed.
 
 ## 4. Running a NMS-OIDC Simulaiton Docker Container
 
@@ -94,17 +110,16 @@ This repo is to manage the core NJS and sample configuration regarding the refer
 
   ![](./img/make-watch.png)
 
-- Update NMS-OIDC in Docker Containers for Keycloak and AzureAD
-
-  ```bash
-  $ docker exec nms-oidc-keycloak bash -c ". /etc/nms/nginx/oidc/config-map.sh bash"
-  ```
 
 ## 5. Running a Browser and Checking If Bundle Page Works
 
-- Run a Web Browser with `http://www.example.com:8010/`, and check if the bundle frontend landing page is shown:
+Run a Web Browser with the following URL, and check if the bundle frontend landing page is shown:
+
+- Keycloak Test: `http://www.example.com:8010/`
+- Azure AD Test: `https://www.example.com/`
 
   ![](./img/bundle-frontend-landing-page.png)
+
 
 
 ## 6. Setting up an Identity Provider (IdP)

@@ -217,7 +217,7 @@ COPY  docker/build-context/var/www/nms/json   /var/www/nms/json/
 COPY  nms-http-*.conf                         /etc/nginx/conf.d/
 COPY  openid_*.conf                           /etc/nms/nginx/oidc/
 COPY  openid_connect.js                       /etc/nms/nginx/oidc/
-COPY  config-map.sh                           /etc/nms/nginx/oidc/
+COPY  config-oidc-var.sh                      /etc/nms/nginx/oidc/
 
 # EXPOSE ports, HTTP 80, HTTPS 443 and, Nginx status page 8010
 STOPSIGNAL SIGTERM

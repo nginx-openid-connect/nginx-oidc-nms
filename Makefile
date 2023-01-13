@@ -1,7 +1,8 @@
 .PHONY: build start ps watch down stop clean
 
 build:
-	docker-compose build --no-cache nginxplus_oidc_keycloak_ubuntu18.04
+	docker-compose build --no-cache nms_oidc_keycloak
+	docker-compose build --no-cache nms_oidc_azuread
 
 start-keycloak:
 	docker-compose up -d postgres
@@ -10,8 +11,8 @@ start-keycloak:
 start:
 	docker-compose up -d nms_oidc_keycloak
 	docker-compose up -d nms_oidc_azuread
-	docker exec nms-oidc-keycloak bash -c ". /etc/nms/nginx/oidc/config-map.sh bash"
-	docker exec nms-oidc-azuread  bash -c ". /etc/nms/nginx/oidc/config-map.sh bash"
+	docker exec nms-oidc-keycloak bash -c ". /etc/nms/nginx/oidc/config-oidc-var.sh bash"
+	docker exec nms-oidc-azuread  bash -c ". /etc/nms/nginx/oidc/config-oidc-var.sh bash"
 
 ps:
 	docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Ports}}\t{{.Names}}"

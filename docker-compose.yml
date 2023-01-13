@@ -48,7 +48,7 @@ services:
     container_name: nms-oidc-keycloak
     build:
       context: ./
-      dockerfile: ./docker/docker-files/nginxplus-ubuntu18.04/Dockerfile
+      dockerfile: ./docker/docker-files/nginxplus-debian/Dockerfile
     image: nms_oidc_keycloak
     ports:
       - 8010:8010
@@ -73,7 +73,7 @@ services:
     container_name: nms-oidc-azuread
     build:
       context: ./
-      dockerfile: ./docker/docker-files/nginxplus-ubuntu18.04/Dockerfile
+      dockerfile: ./docker/docker-files/nginxplus-debian/Dockerfile
     image: nms_oidc_azuread
     ports:
       - 443:443

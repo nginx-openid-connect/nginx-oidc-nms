@@ -25,6 +25,14 @@ function waitForSessionSync(r, timeLeft) {
 }
 
 function auth(r, afterSyncCheck) {
+    if (isClientCredentialFlow(r)) {
+        clientCredentialFlow(r);
+        return;
+    }
+    authCodeFlow(r, afterSyncCheck);
+}
+
+function authCodeFlow(r, afterSyncCheck) {
     // If a cookie was sent but the ID token is not in the key-value database, wait for the token to be in sync.
     if (r.variables.cookie_auth_token && !r.variables.session_jwt && !afterSyncCheck && r.variables.zone_sync_leeway > 0) {
         waitForSessionSync(r, r.variables.zone_sync_leeway);
@@ -332,4 +340,105 @@ function redirectPostLogin(r) {
 // Redirect URI after logged-out from the OP.
 function redirectPostLogout(r) {
     r.return(302, r.variables.oidc_logout_landing_page);
+}
+
+// Check if grant type is Client Credentials Flow.
+function isClientCredentialFlow(r) {
+    if (!r.variables.oidc_client_credentials_flow_enable) {
+        return false;
+    }
+    return ('Authorization' in r.headersIn);
+
+    // TODO: Remove this if the specific variable isn't used in the header
+    //       for Client Credential Flow
+    // try {
+    //     let grantType = r.headersIn['Nginx-Management-Suite-GrantType'];
+    //     if (grantType === 'ClientCredentialsFlow') {
+    //         return true
+    //     } else {
+    //         return false;
+    //     }
+    //     // TODO: Validate access token if needed.
+    // } catch (e) {
+    //     return false;
+    // }
+}
+
+// Extract Bearer token and get client ID/secret parameters
+function getClientIDSecretParamsFromBearerToken(r) {
+    // TODO: add a logic to extract Bearer token and set client ID and secret.
+    let clientID = r.variables.oidc_client;
+    let clientSecret = r.variables.oidc_client_secret;
+
+    let params = '&client_id=' + clientID + "&client_secret=" + clientSecret;
+    return params
+}
+
+// Start Client Credentials Flow
+function clientCredentialFlow(r) {
+    if (r.variables.access_token) {
+        // TODO: do not return if access_token is expired
+        return;
+    }
+    // TODO: Extract bearer token and set client ID and secret in the params.
+    let defaultParams = getClientIDSecretParamsFromBearerToken(r);
+
+    // TODO: check if access token has been synched between zones.
+    r.log("start Client Credentials Flow");
+    let req_body = "grant_type=client_credentials" + defaultParams +
+                   "&" + r.variables.oidc_client_credentials_token_body;
+    let req = {
+        method: "POST",
+        body: req_body,
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    }
+    r.subrequest("/_token_client_credentials", req, function(reply) {
+        if (reply.status == 504) {
+            r.error("OIDC timeout connecting to IdP when starting Client Credential Flow");
+            r.return(504);
+            return;
+        }
+        if (reply.status != 200) {
+            try {
+                var errorset = JSON.parse(reply.responseBody);
+                if (errorset.error) {
+                    r.error("OIDC error from IdP when starting Client Credential Flow: " + errorset.error + ", " + errorset.error_description);
+                } else {
+                    r.error("OIDC unexpected response from IdP starting Client Credential Flow (HTTP " + reply.status + "). " + reply.responseBody);
+                }
+            } catch (e) {
+                r.error("OIDC unexpected response from IdP starting Client Credential Flow (HTTP " + reply.status + "). " + reply.responseBody);
+            }
+            r.return(502);
+            return;
+        }
+        // Token endpoint returned 200, and check for errors.
+        try {
+            var tokenset = JSON.parse(reply.responseBody);
+            if (tokenset.error) {
+                r.error("OIDC " + tokenset.error + " " + tokenset.error_description);
+                r.return(500);
+                return;
+            }
+            // TODO: access token validation if necessary
+
+            // Update access token in key/value store
+            if (tokenset.access_token) {
+                r.variables.new_access_token = tokenset.access_token;
+            } else {
+                r.variables.new_access_token = "";
+            }
+            let redirectURI = r.variables.request_uri + "; " + r.variables.oidc_cookie_flags;
+            r.headersOut['Set-Cookie'] = [
+                "auth_token=" + r.variables.request_id + "; " + r.variables.oidc_cookie_flags,
+                "auth_redir=" + redirectURI,
+            ];
+            r.return(302, r.variables.redirect_base + redirectURI);
+        } catch (e) {
+            r.error("OIDC Client Credential Flow requested but token response is not JSON. " + reply.responseBody);
+            r.return(502);
+        }
+    });
 }

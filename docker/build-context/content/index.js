@@ -34,13 +34,13 @@ var initButtons = function () {
 
 
 var initButtonsBeforeSignIn = function () {
-  btnProxiedAPI.disabled = true
+  // btnProxiedAPI.disabled = true
   isSignedIn             = false;
   showLoginBtnTitle(TITLE_SIGNIN);
 }
 
 var initButtonsAfterSignIn = function () {
-  btnProxiedAPI.disabled = false
+  // btnProxiedAPI.disabled = false
   isSignedIn             = true;
   showLoginBtnTitle(TITLE_SIGNOUT);
 }
@@ -64,7 +64,24 @@ var eventHandlerSignIn = function (evt) {
 // - /v1/api/2: cookie is used. The bearer access token is also passed to the 
 //              backend API via `proxy_set_header Authorization` directive.
 var eventHandlerProxiedAPI = function (evt) {
-  var headers = {};
+  let headers = {};
+  // let body = {};
+  // let clientID = getClientID();
+  // let clientSecret = getClientSecret();
+  // let scopes = getScopes();
+
+  // Fetch doesn't support GET w/ body
+  // if (clientID != 'Enter a client ID') {
+  //     headers = {
+  //       'Nginx-Management-Suite-GrantType': 'ClientCredentialsFlow'
+  //     };
+  //     body = {
+  //       'client_id': clientID,
+  //       'client_secret': clientSecret,
+  //       'grant_type': 'client_credentials',
+  //       'scope': scopes
+  //     };
+  // }
   doAPIRequest(
     evt,
     getSampleURI(), 
@@ -162,7 +179,7 @@ var doAPIRequest = function(evt, uri, msgBefore, msgAfter, headers) {
 
 // Show user information in the UI via the endpoint of /userinfo
 var showUserInfo = function(evt) {
-  var headers = {};
+  let headers = {};
   doAPIRequest(
     evt,
     '/userinfo', 
@@ -226,6 +243,18 @@ var showSignOutBtn = function () {
 var getSampleURI = function () {
   return document.getElementById('sample-uri').value;
 };
+
+// var getClientID = function () {
+//   return document.getElementById('client-id').value;
+// };
+
+// var getClientSecret = function () {
+//   return document.getElementById('client-secret').value;
+// };
+
+// var getScopes = function () {
+//   return document.getElementById('scopes').value;
+// };
 
 // Add event lister of each button for testing NGINX Plus OIDC integration.
 btnSignin    .addEventListener('click', eventHandlerSignIn);

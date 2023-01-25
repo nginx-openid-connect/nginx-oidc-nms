@@ -5,7 +5,7 @@ This repo is to manage the core NJS and sample configuration regarding the refer
 
 > Note: The main [`README.md`](https://github.com/nginxinc/nginx-openid-connect) of this repo explains several options in detail. But this doc focuses on `Start Guide` to quickly set up and test the OIDC flow locally using bundled frontend app and backend environment on behalf of NMS.
 
-![](./img/nginx-oidc-workflow.png)
+![](./img/nms-oidc-flow.png)
 
 - [1. Prerequisites](#1-prerequisites)
 - [2. Running a Keycloak Docker Container (Optional)](#2-running-a-keycloak-docker-container-optional)

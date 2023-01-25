@@ -1,6 +1,6 @@
 /*
  * JavaScript functions for providing OpenID Connect with NGINX Plus
- * 
+ *
  * Copyright (C) 2020 Nginx, Inc.
  */
 var newSession = false; // Used by oidcAuth() and validateIdToken()
@@ -39,6 +39,7 @@ function authCodeFlow(r, afterSyncCheck) {
         return;
     }
 
+    r.variables.session_id = r.variables.cookie_auth_token;
     if (!r.variables.refresh_token || r.variables.refresh_token == "-") {
         newSession = true;
 
@@ -59,7 +60,7 @@ function authCodeFlow(r, afterSyncCheck) {
         r.return(302, r.variables.oidc_authz_endpoint + getAuthZArgs(r));
         return;
     }
-    
+
     // Pass the refresh token to the /_refresh location so that it can be
     // proxied to the IdP in exchange for a new id_token
     r.subrequest("/_refresh", "token=" + r.variables.refresh_token,
@@ -190,6 +191,7 @@ function codeExchange(r) {
                         }
 
                         // If the response includes a refresh token then store it
+                        r.variables.session_id = generateSessionID(r);
                         if (tokenset.refresh_token) {
                             r.variables.new_refresh = tokenset.refresh_token; // Create key-value store entry
                             r.log("OIDC refresh token stored");
@@ -198,14 +200,14 @@ function codeExchange(r) {
                         }
 
                         // Add opaque token to keyval session store
-                        r.log("OIDC success, creating session " + r.variables.request_id);
+                        r.log("OIDC success, creating session " + r.variables.session_id);
                         r.variables.new_session = tokenset.id_token; // Create key-value store entry
                         if (tokenset.access_token) {
                             r.variables.new_access_token = tokenset.access_token;
                         } else {
                             r.variables.new_access_token = "";
                         }
-                        r.headersOut["Set-Cookie"] = "auth_token=" + r.variables.request_id + "; " + r.variables.oidc_cookie_flags;
+                        r.headersOut["Set-Cookie"] = "auth_token=" + r.variables.session_id + "; " + r.variables.oidc_cookie_flags;
                         redirectPostLogin(r);
                    }
                 );
@@ -283,6 +285,7 @@ function logout(r) {
         queryParams = '?' + r.variables.oidc_end_session_query_params;
     }
     r.variables.session_jwt   = "-";
+    r.variables.session_id    = "-";
     r.variables.access_token  = "-";
     r.variables.refresh_token = "-";
     r.return(302, r.variables.oidc_end_session_endpoint + queryParams);
@@ -290,7 +293,7 @@ function logout(r) {
 
 function getAuthZArgs(r) {
     // Choose a nonce for this flow for the client, and hash it for the IdP
-    var noncePlain = r.variables.request_id;
+    var noncePlain = r.variables.session_id;
     var c = require('crypto');
     var h = c.createHmac('sha256', r.variables.oidc_hmac_key).update(noncePlain);
     var nonceHash = h.digest('base64url');
@@ -325,7 +328,7 @@ function idpClientAuth(r) {
         return "code=" + r.variables.arg_code + "&code_verifier=" + r.variables.pkce_code_verifier;
     } else {
         return "code=" + r.variables.arg_code + "&client_secret=" + r.variables.oidc_client_secret;
-    }   
+    }
 }
 
 // Redirect URI after successful login from the OP.
@@ -347,7 +350,9 @@ function isClientCredentialFlow(r) {
     if (!r.variables.oidc_client_credentials_flow_enable) {
         return false;
     }
-    return ('Authorization' in r.headersIn);
+    return ((r.variables.request_method === 'POST' && r.variables.request_body &&
+             r.variables.request_body.includes("grant_type=client_credentials")) ||
+            ('Authorization' in r.headersIn));
 
     // TODO: Remove this if the specific variable isn't used in the header
     //       for Client Credential Flow
@@ -376,17 +381,21 @@ function getClientIDSecretParamsFromBearerToken(r) {
 
 // Start Client Credentials Flow
 function clientCredentialFlow(r) {
+    r.variables.session_id = generateSessionID(r);
+    r.log("start Client Credentials Flow " + r.variables.session_id + " " + r.variables.request_uri);
     if (r.variables.access_token) {
         // TODO: do not return if access_token is expired
         return;
     }
-    // TODO: Extract bearer token and set client ID and secret in the params.
-    let defaultParams = getClientIDSecretParamsFromBearerToken(r);
 
+    // Set request body using either bearer token or user-agent's API request.
+    let req_body = r.variables.request_body;
+    if ('Authorization' in r.headersIn) {
+        let defaultParams = getClientIDSecretParamsFromBearerToken(r);
+        req_body = "grant_type=client_credentials" + defaultParams +
+        "&" + r.variables.oidc_client_credentials_token_body;
+    }
     // TODO: check if access token has been synched between zones.
-    r.log("start Client Credentials Flow");
-    let req_body = "grant_type=client_credentials" + defaultParams +
-                   "&" + r.variables.oidc_client_credentials_token_body;
     let req = {
         method: "POST",
         body: req_body,
@@ -432,7 +441,7 @@ function clientCredentialFlow(r) {
             }
             let redirectURI = r.variables.request_uri + "; " + r.variables.oidc_cookie_flags;
             r.headersOut['Set-Cookie'] = [
-                "auth_token=" + r.variables.request_id + "; " + r.variables.oidc_cookie_flags,
+                "auth_token=" + r.variables.session_id + "; " + r.variables.oidc_cookie_flags,
                 "auth_redir=" + redirectURI,
             ];
             r.return(302, r.variables.redirect_base + redirectURI);
@@ -442,3 +451,26 @@ function clientCredentialFlow(r) {
         }
     });
 }
+
+// Generate session ID using remote address, user agent, client ID, and time.
+function generateSessionID(r) {
+    var time = new Date(Date.now());
+    var jsonSession = {
+        'remoteAddr': r.variables.remote_addr,
+        'userAgent' : r.variables.http_user_agent,
+        'clientID'  : r.variables.oidc_client,
+        'date'      : time.getDate()
+    };
+    if (r.variables.session_cookie_validation_time_format == "hh") {
+        jsonSession['timestamp'] = time.getHours() + ":00";
+    } else if (r.variables.session_cookie_validation_time_format == "mm") {
+        jsonSession['timestamp'] = time.getHours() + ":" + time.getMinutes();
+    }
+    var data = JSON.stringify(jsonSession);
+    var c = require('crypto');
+    var h = c.createHmac('sha256', r.variables.oidc_hmac_key).update(data);
+    var session_id = h.digest('base64url');
+    return session_id;
+}
+
+
